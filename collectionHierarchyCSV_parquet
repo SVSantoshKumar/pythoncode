@@ -1,0 +1,79 @@
+import boto3
+import pandas as pd
+import re
+import io
+from datetime import datetime
+
+# AWS S3 Configuration
+AWS_ACCESS_KEY = "--"
+AWS_SECRET_KEY = "--"
+BUCKET_NAME = "disha-sql-uat"
+SOURCE_FOLDER = "L0/collection_hierarchy/stage_load/collection_hierarchy/"
+DESTINATION_FOLDER = "L0/collection_hierarchy/parquet_executed"
+
+
+
+# Remove the extension and split by underscore
+
+
+# Get the last two parts and join them
+
+#print(extracted)  # Output: Aug_2024
+
+
+# Initialize S3 client
+s3 = boto3.client(
+    "s3",
+    aws_access_key_id=AWS_ACCESS_KEY,
+    aws_secret_access_key=AWS_SECRET_KEY,
+    verify=False
+)
+
+#def extract_date_from_filename(filename):
+  #  """Extract date from the filename."""
+ #   match = re.search(DATE_PATTERN, filename)
+   # return match.group(1) if match else None
+
+def process_file(file_key):
+    """Download, process, convert to parquet, upload, and delete the original file."""
+    
+    # Extract date from filename
+    #file_date = extract_date_from_filename(file_key)
+   # if not file_date:
+    #    print(f"Skipping {file_key}: No date found in filename")
+     #   return
+    
+    # Download the file from S3
+    print(f"Downloading: {file_key} from S3...")
+    response = s3.get_object(Bucket=BUCKET_NAME, Key=file_key)
+    file_content = response["Body"].read()
+    
+    # Read CSV into Pandas DataFrame
+    df = pd.read_csv(io.BytesIO(file_content), encoding="ISO-8859-1")
+    
+    # Clean column names: replace spaces and slashes with underscores
+    #df.columns = [col.replace(" ", "_").replace("/", "_") for col in df.columns]
+
+    # Add new date column
+   # df["extracted_date"] = datetime.strptime(file_date, "%d-%m-%Y").strftime("%Y-%m-%d")
+    
+    # Convert DataFrame to Parquet format
+    parquet_buffer = io.BytesIO()
+    df.to_parquet(parquet_buffer, index=False)
+    
+    # Upload Parquet file to Executed/DATE_FOLDER/
+    parts = file_name.replace(".csv", "").split("_")
+    extracted = "_".join(parts[-2:])
+    dest_key = f"{DESTINATION_FOLDER}/Collection_Hierarchy_{extracted}.parquet"
+    print(f"Uploading converted file to: {dest_key}")
+    
+    s3.put_object(Bucket=BUCKET_NAME, Key=dest_key, Body=parquet_buffer.getvalue())
+    
+    print("✅ Processing completed successfully!")
+
+# Define the filename
+file_name = "Collection_Hierarchy_Aug_2024.csv"
+file_key = f"{SOURCE_FOLDER}{file_name}"
+
+# Process the file
+process_file(file_key)
